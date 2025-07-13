@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستم مدیریت بیماران کلینیک دکتر باغستانی</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #e9eef3;
+            background-image: linear-gradient(160deg, #e9eef3 0%, #d5dde8 100%);
+        }
+        .status-waiting { background-color: #fde047; color: #713f12; }
+        .status-completed { background-color: #86efac; color: #14532d; }
+        .btn-delete { background-color: #fca5a5; color: #7f1d1d; }
+        .btn-delete:hover { background-color: #f87171; }
+        .btn-primary { background-color: #38bdf8; color: white; }
+        .btn-primary:hover { background-color: #0ea5e9; }
+        .btn-secondary { background-color: #64748b; color: white; }
+        .btn-secondary:hover { background-color: #475569; }
+        .nav-btn { background-color: rgba(255, 255, 255, 0.5); color: #374151; border: 2px solid transparent; }
+        .nav-btn.active { background-color: white; color: #0ea5e9; border-color: #38bdf8; }
+        #user-info.status-ok { color: #16a34a; }
+        #user-info.status-error { color: #b91c1c; }
+        .content-disabled { opacity: 0.5; pointer-events: none; }
+        .link-item:hover { background-color: #f8fafc; }
+        .glassmorphism-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 bg-gray-200 bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="w-full max-w-sm p-8 space-y-6 bg-white rounded-2xl shadow-2xl">
+            <div class="text-center">
+                <h2 class="text-3xl font-bold text-gray-800">ورود به سیستم</h2>
+                <p class="mt-2 text-gray-500">کلینیک رادیولوژی دکتر باغستانی</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="password" class="block mb-2 text-sm font-medium text-gray-600">رمز عبور</label>
+                    <input type="password" id="password" class="w-full p-3 bg-gray-100 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition" required>
+                </div>
+                <p id="login-error" class="text-red-500 text-sm text-center hidden">رمز عبور اشتباه است.</p>
+                <button type="submit" class="w-full btn-primary font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">ورود</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Change Password Modal -->
+    <div id="password-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-2xl relative">
+             <button id="close-modal-btn" class="absolute top-4 left-4 text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-gray-800">تغییر رمز عبور</h2>
+            </div>
+            <form id="change-password-form" class="space-y-4">
+                <div>
+                    <label for="old-password" class="block mb-2 text-sm font-medium text-gray-600">رمز عبور فعلی</label>
+                    <input type="password" id="old-password" class="w-full p-3 bg-gray-100 border rounded-lg" required>
+                </div>
+                <div>
+                    <label for="new-password" class="block mb-2 text-sm font-medium text-gray-600">رمز عبور جدید</label>
+                    <input type="password" id="new-password" class="w-full p-3 bg-gray-100 border rounded-lg" required>
+                </div>
+                <div>
+                    <label for="confirm-password" class="block mb-2 text-sm font-medium text-gray-600">تکرار رمز عبور جدید</label>
+                    <input type="password" id="confirm-password" class="w-full p-3 bg-gray-100 border rounded-lg" required>
+                </div>
+                <p id="password-change-feedback" class="text-sm text-center"></p>
+                <button type="submit" class="w-full btn-primary font-bold py-3 px-6 rounded-lg shadow-md">ذخیره تغییرات</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">سیستم اختصاصی یکپارچه مدیریت بیماران کلینیک رادیولوژی دکتر باغستانی</h1>
+            <div class="flex justify-center items-center gap-4 mt-4">
+                <div id="user-info" class="text-sm font-medium text-gray-600 bg-white/50 p-2 rounded-md inline-block transition-colors">
+                    وضعیت: <span id="connection-status" class="font-mono">در حال اتصال...</span>
+                </div>
+                <button id="change-password-btn" title="تغییر رمز عبور" class="p-2 bg-white/50 rounded-full hover:bg-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+            </div>
+        </header>
+
+        <div id="main-content" class="hidden">
+            <!-- Navigation -->
+            <div class="mb-8 flex justify-center">
+                <div class="p-1 bg-white/50 rounded-xl shadow-md flex gap-2">
+                    <button id="nav-list-view" class="nav-btn font-semibold py-2 px-6 rounded-lg text-sm transition-all">لیست بیماران</button>
+                    <button id="nav-add-view" class="nav-btn font-semibold py-2 px-6 rounded-lg text-sm transition-all">افزودن بیمار جدید</button>
+                </div>
+            </div>
+
+            <!-- Add Patient View -->
+            <div id="add-view" class="hidden">
+                <div class="glassmorphism-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-300 pb-2">افزودن بیمار جدید</h2>
+                    <form id="add-patient-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="patient-name" class="block mb-2 font-medium">نام بیمار</label>
+                            <input type="text" id="patient-name" placeholder="مثال: علی رضایی" class="w-full p-3 bg-gray-50 border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" required>
+                        </div>
+                        <div>
+                            <label for="doctor-name" class="block mb-2 font-medium">نام پزشک</label>
+                            <input type="text" id="doctor-name" placeholder="مثال: دکتر محمدی" class="w-full p-3 bg-gray-50 border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" required>
+                        </div>
+                        <div class="md:col-span-2">
+                             <label for="service-type" class="block mb-2 font-medium">نوع خدمت</label>
+                             <select id="service-type" class="w-full p-3 bg-gray-50 border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" required>
+                                <option value="surgical-guide">جراحی سرجیکال گاید</option>
+                                <option value="orthodontic-photography">فتوگرافی ارتودنسی</option>
+                             </select>
+                        </div>
+                        <div class="md:col-span-2 text-left">
+                            <button type="submit" class="w-full md:w-auto btn-primary font-bold py-3 px-6 rounded-lg shadow-md transition-transform hover:-translate-y-0.5">ثبت بیمار</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Patient List View -->
+            <div id="list-view">
+                <div class="mb-6">
+                    <div class="relative">
+                        <input type="search" id="search-input" placeholder="جستجو بر اساس نام بیمار، پزشک و..." class="w-full p-4 pr-12 bg-white border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition shadow-md">
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-4">
+                            <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                        <div class="flex flex-wrap items-center gap-2 p-1 bg-white/60 rounded-lg">
+                            <div id="filter-container" class="flex items-center gap-2">
+                                <button data-filter="all" class="filter-btn active font-semibold py-2 px-4 rounded-md text-sm transition">همه</button>
+                                <button data-filter="surgical-guide" class="filter-btn font-semibold py-2 px-4 rounded-md text-sm transition">سرجیکال گاید</button>
+                                <button data-filter="orthodontic-photography" class="filter-btn font-semibold py-2 px-4 rounded-md text-sm transition">فتوگرافی</button>
+                            </div>
+                            <select id="doctor-filter" class="bg-white p-2.5 rounded-md text-sm border-2 border-transparent focus:ring-2 focus:ring-sky-500 outline-none">
+                                <option value="all">همه پزشکان</option>
+                            </select>
+                        </div>
+                        <button id="export-csv" class="w-full md:w-auto btn-secondary font-bold py-2 px-5 rounded-lg shadow-md transition-transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            خروجی CSV
+                        </button>
+                    </div>
+
+                    <div id="patient-list" class="space-y-4">
+                        <div id="loading" class="text-center py-10"><div class="animate-spin inline-block w-8 h-8 border-4 rounded-full border-sky-500 border-t-transparent"></div><p class="mt-2">در حال بارگذاری اطلاعات...</p></div>
+                    </div>
+                    <div id="empty-message" class="text-center py-10 px-6 bg-white/70 rounded-lg shadow-md hidden">
+                        <h3 class="mt-2 text-lg font-medium">بیماری یافت نشد</h3>
+                        <p class="mt-1 text-sm text-gray-500">با توجه به فیلترها، بیماری یافت نشد.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const mainContent = document.getElementById('main-content');
+        const form = document.getElementById('add-patient-form');
+        const patientListDiv = document.getElementById('patient-list');
+        const emptyMessageDiv = document.getElementById('empty-message');
+        const loadingDiv = document.getElementById('loading');
+        const filterContainer = document.getElementById('filter-container');
+        const doctorFilter = document.getElementById('doctor-filter');
+        const exportBtn = document.getElementById('export-csv');
+        const connectionStatusSpan = document.getElementById('connection-status');
+        const userInfoDiv = document.getElementById('user-info');
+        const searchInput = document.getElementById('search-input');
+        const loginScreen = document.getElementById('login-screen');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const passwordModal = document.getElementById('password-modal');
+        const changePasswordBtn = document.getElementById('change-password-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const changePasswordForm = document.getElementById('change-password-form');
+        const passwordChangeFeedback = document.getElementById('password-change-feedback');
+        const navListView = document.getElementById('nav-list-view');
+        const navAddView = document.getElementById('nav-add-view');
+        const addView = document.getElementById('add-view');
+        const listView = document.getElementById('list-view');
+
+        let state = {
+            patients: [],
+            currentServiceFilter: 'all',
+            currentDoctorFilter: 'all',
+            searchTerm: '',
+            db: null,
+            auth: null,
+            unsubscribe: () => {},
+        };
+
+        const DEFAULT_PASSWORD = "clinic123";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('isLoggedIn') === 'true') {
+                loginScreen.classList.add('hidden');
+                initializeApplication();
+            } else {
+                loginScreen.classList.remove('hidden');
+            }
+        });
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const passwordInput = document.getElementById('password');
+            const storedPassword = localStorage.getItem('app_password') || DEFAULT_PASSWORD;
+            if (passwordInput.value === storedPassword) {
+                sessionStorage.setItem('isLoggedIn', 'true');
+                loginScreen.classList.add('hidden');
+                initializeApplication();
+            } else {
+                loginError.classList.remove('hidden');
+                passwordInput.value = '';
+            }
+        });
+        
+        changePasswordBtn.addEventListener('click', () => passwordModal.classList.remove('hidden'));
+        closeModalBtn.addEventListener('click', () => passwordModal.classList.add('hidden'));
+        
+        changePasswordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const oldPass = document.getElementById('old-password').value;
+            const newPass = document.getElementById('new-password').value;
+            const confirmPass = document.getElementById('confirm-password').value;
+            const storedPassword = localStorage.getItem('app_password') || DEFAULT_PASSWORD;
+
+            if (oldPass !== storedPassword) {
+                passwordChangeFeedback.textContent = 'رمز عبور فعلی اشتباه است.';
+                passwordChangeFeedback.className = 'text-sm text-center text-red-500';
+                return;
+            }
+            if (newPass !== confirmPass) {
+                passwordChangeFeedback.textContent = 'رمزهای عبور جدید مطابقت ندارند.';
+                passwordChangeFeedback.className = 'text-sm text-center text-red-500';
+                return;
+            }
+            if (newPass.length < 6) {
+                passwordChangeFeedback.textContent = 'رمز عبور جدید باید حداقل ۶ کاراکتر باشد.';
+                passwordChangeFeedback.className = 'text-sm text-center text-red-500';
+                return;
+            }
+
+            localStorage.setItem('app_password', newPass);
+            passwordChangeFeedback.textContent = 'رمز عبور با موفقیت تغییر کرد!';
+            passwordChangeFeedback.className = 'text-sm text-center text-green-500';
+            setTimeout(() => {
+                passwordModal.classList.add('hidden');
+                changePasswordForm.reset();
+                passwordChangeFeedback.textContent = '';
+            }, 2000);
+        });
+
+        function initializeApplication() {
+            try {
+                const firebaseConfig = {
+                    apiKey: "AIzaSyC0Y8-7qYbCOCVhEw-fXQCT_WIO8muerb4",
+                    authDomain: "dr-baghestani-clinic.firebaseapp.com",
+                    projectId: "dr-baghestani-clinic",
+                    storageBucket: "dr-baghestani-clinic.appspot.com",
+                    messagingSenderId: "557647276628",
+                    appId: "1:557647276628:web:c60fc0ac3c1424fd5e9bc1",
+                    measurementId: "G-2FHWXQPSFT"
+                };
+
+                const app = initializeApp(firebaseConfig);
+                state.auth = getAuth(app);
+                state.db = getFirestore(app);
+
+                attachUIEventListeners();
+                handleAuthentication();
+            } catch (error) {
+                console.error("Critical Initialization Failed:", error);
+                showPermanentError("خطا در راه‌اندازی اولیه برنامه. لطفاً اطلاعات Firebase را در کد بررسی کنید.");
+            }
+        }
+
+        function handleAuthentication() {
+            updateConnectionStatus('در حال احراز هویت...', 'status-error');
+            onAuthStateChanged(state.auth, async (user) => {
+                if (user) {
+                    switchToOnlineMode(user);
+                } else {
+                    try {
+                        await signInAnonymously(state.auth);
+                    } catch (error) {
+                        console.error("Authentication failed:", error);
+                        showPermanentError(`خطای اتصال: ${error.code}`);
+                    }
+                }
+            });
+        }
+
+        function switchToOnlineMode(user) {
+            updateConnectionStatus(`آنلاین`, 'status-ok');
+            mainContent.classList.remove('hidden');
+            switchView('list');
+            state.unsubscribe(); 
+            const collectionPath = `clinic-patients`;
+            const q = query(collection(state.db, collectionPath));
+            state.unsubscribe = onSnapshot(q, (snapshot) => {
+                loadingDiv.style.display = 'none';
+                state.patients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                state.patients.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                updateDoctorFilter();
+                renderPatientList();
+            }, (error) => {
+                console.error("Firestore listener error:", error);
+                showPermanentError(`خطا در دریافت اطلاعات: ${error.message}`);
+            });
+        }
+
+        function showPermanentError(errorMessage) {
+            updateConnectionStatus(errorMessage, 'status-error');
+            mainContent.classList.add('hidden');
+            loadingDiv.innerHTML = `<p class='text-red-500'>${errorMessage}</p>`;
+        }
+
+        function updateConnectionStatus(text, statusClass) {
+            connectionStatusSpan.textContent = text;
+            userInfoDiv.className = 'text-sm font-medium text-gray-600 bg-white/50 p-2 rounded-md inline-block transition-colors';
+            userInfoDiv.classList.add(statusClass);
+        }
+
+        function updateDoctorFilter() {
+            const doctors = [...new Set(state.patients.map(p => p.doctor))];
+            const currentSelection = doctorFilter.value;
+            doctorFilter.innerHTML = '<option value="all">همه پزشکان</option>';
+            doctors.forEach(doctor => {
+                const option = document.createElement('option');
+                option.value = doctor;
+                option.textContent = doctor;
+                doctorFilter.appendChild(option);
+            });
+            doctorFilter.value = doctors.includes(currentSelection) ? currentSelection : 'all';
+        }
+
+        function renderPatientList() {
+            patientListDiv.innerHTML = '';
+            const lowerCaseSearchTerm = state.searchTerm.toLowerCase();
+            const filteredPatients = state.patients.filter(p => {
+                const matchesService = state.currentServiceFilter === 'all' || p.service === state.currentServiceFilter;
+                const matchesDoctor = state.currentDoctorFilter === 'all' || p.doctor === state.currentDoctorFilter;
+                const matchesSearch = !lowerCaseSearchTerm || 
+                                      p.name.toLowerCase().includes(lowerCaseSearchTerm) ||
+                                      p.doctor.toLowerCase().includes(lowerCaseSearchTerm);
+                return matchesService && matchesDoctor && matchesSearch;
+            });
+            
+            emptyMessageDiv.classList.toggle('hidden', filteredPatients.length > 0);
+            filteredPatients.forEach(patient => patientListDiv.appendChild(createPatientCard(patient)));
+        }
+        
+        function createPatientCard(patient) {
+            const card = document.createElement('div');
+            card.className = 'glassmorphism-card p-4 rounded-xl shadow-lg flex flex-col gap-4';
+            card.dataset.id = patient.id;
+            
+            const statusClass = patient.status === 'completed' ? 'status-completed' : 'status-waiting';
+            const statusText = patient.status === 'completed' ? 'انجام شد' : 'در انتظار';
+            const serviceText = patient.service === 'surgical-guide' ? 'جراحی سرجیکال گاید' : 'فتوگرافی ارتودنسی';
+            
+            let specialFieldsHTML = '';
+            if (patient.service === 'surgical-guide') {
+                specialFieldsHTML = `
+                    <div class="border-t border-gray-300 pt-3 mt-3">
+                        <h4 class="font-semibold mb-2">مدارک مورد نیاز:</h4>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" data-action="toggle-cbct" class="h-4 w-4 rounded" ${patient.hasCbct ? 'checked' : ''}>
+                                دارای CBCT
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" data-action="toggle-scan" class="h-4 w-4 rounded" ${patient.hasScanData ? 'checked' : ''}>
+                                دارای اسکن
+                            </label>
+                        </div>
+                    </div>`;
+            } else if (patient.service === 'orthodontic-photography') {
+                const filesHTML = (patient.files || []).map(file => `
+                    <div class="link-item flex justify-between items-center p-2 rounded-md">
+                        <a href="${file.url}" target="_blank" class="text-sky-600 hover:underline truncate" title="${file.url}">${file.name}</a>
+                        <button data-action="delete-file" data-url="${file.url}" class="p-1 text-red-500 hover:text-red-700">&times;</button>
+                    </div>
+                `).join('');
+
+                specialFieldsHTML = `
+                    <div class="border-t border-gray-300 pt-3 mt-3">
+                        <h4 class="font-semibold mb-2">لینک فایل‌های بیمار:</h4>
+                        <div class="space-y-1">${filesHTML}</div>
+                        <form class="add-link-form mt-3 flex gap-2">
+                            <input type="text" placeholder="نام فایل" class="link-name-input w-1/3 p-2 bg-gray-50 border rounded-md" required>
+                            <input type="url" placeholder="لینک اشتراک‌گذاری فایل" class="link-url-input flex-1 p-2 bg-gray-50 border rounded-md" required>
+                            <button type="submit" class="text-sm btn-primary py-1 px-3 rounded-md">افزودن</button>
+                        </form>
+                    </div>`;
+            }
+
+            card.innerHTML = `
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+                    <div class="flex-1 text-center md:text-right">
+                        <p class="font-bold text-lg text-sky-700">${patient.name}</p>
+                        <p class="text-sm text-gray-600">پزشک: ${patient.doctor}</p>
+                        <p class="text-sm text-gray-500">خدمت: ${serviceText}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button data-action="toggle-status" class="font-semibold py-2 px-4 rounded-full text-sm transition-transform transform hover:scale-105 ${statusClass}">${statusText}</button>
+                        <button data-action="delete-patient" class="delete-btn btn-delete p-2 rounded-full transition-colors"><svg class="pointer-events-none h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg></button>
+                    </div>
+                </div>
+                ${specialFieldsHTML}
+            `;
+            return card;
+        }
+
+        function switchView(viewName) {
+            if (viewName === 'list') {
+                listView.classList.remove('hidden');
+                addView.classList.add('hidden');
+                navListView.classList.add('active');
+                navAddView.classList.remove('active');
+            } else {
+                listView.classList.add('hidden');
+                addView.classList.remove('hidden');
+                navListView.classList.remove('active');
+                navAddView.classList.add('active');
+            }
+        }
+
+        function attachUIEventListeners() {
+            form.addEventListener('submit', handleAddPatient);
+            patientListDiv.addEventListener('click', handleListClick);
+            patientListDiv.addEventListener('submit', handleAddLink);
+            filterContainer.addEventListener('click', handleFilterClick);
+            doctorFilter.addEventListener('change', handleFilterClick);
+            exportBtn.addEventListener('click', handleExportCSV);
+            searchInput.addEventListener('input', (e) => {
+                state.searchTerm = e.target.value;
+                renderPatientList();
+            });
+            navListView.addEventListener('click', () => switchView('list'));
+            navAddView.addEventListener('click', () => switchView('add'));
+        }
+
+        async function handleAddPatient(e) {
+            e.preventDefault();
+            const name = document.getElementById('patient-name').value.trim();
+            const doctor = document.getElementById('doctor-name').value.trim();
+            const service = document.getElementById('service-type').value;
+            if (!name || !doctor || !service) return;
+
+            const patientData = { name, doctor, service, status: 'waiting', files: [], hasCbct: false, hasScanData: false };
+            try {
+                const collectionPath = `clinic-patients`;
+                await addDoc(collection(state.db, collectionPath), { ...patientData, createdAt: new Date() });
+                form.reset();
+                switchView('list'); // Switch back to list view after adding
+            } catch (error) { console.error("Error adding document:", error); alert("خطا در ثبت بیمار."); }
+        }
+
+        async function handleListClick(e) {
+            const actionTarget = e.target.closest('[data-action]');
+            if (!actionTarget) return;
+
+            const action = actionTarget.dataset.action;
+            const card = actionTarget.closest('[data-id]');
+            if (!card) return;
+
+            const patientId = card.dataset.id;
+            const patientIndex = state.patients.findIndex(p => p.id == patientId);
+            if (patientIndex === -1) return;
+            
+            const patient = state.patients[patientIndex];
+            const patientDocRef = doc(state.db, `clinic-patients`, patientId);
+
+            switch(action) {
+                case 'delete-patient':
+                    await deleteDoc(patientDocRef);
+                    break;
+                case 'toggle-status':
+                case 'toggle-cbct':
+                case 'toggle-scan':
+                    const field = action === 'toggle-status' ? 'status' : (action === 'toggle-cbct' ? 'hasCbct' : 'hasScanData');
+                    const newValue = field === 'status' ? (patient[field] === 'waiting' ? 'completed' : 'waiting') : !patient[field];
+                    await updateDoc(patientDocRef, { [field]: newValue });
+                    break;
+                case 'delete-file':
+                    const fileUrl = actionTarget.dataset.url;
+                    if (!fileUrl) return;
+                    const fileToDelete = (patient.files || []).find(f => f.url === fileUrl);
+                    if (fileToDelete) {
+                        await updateDoc(patientDocRef, { files: arrayRemove(fileToDelete) });
+                    }
+                    break;
+            }
+        }
+        
+        async function handleAddLink(e) {
+            e.preventDefault();
+            if (!e.target.classList.contains('add-link-form')) return;
+
+            const card = e.target.closest('[data-id]');
+            if (!card) return;
+
+            const patientId = card.dataset.id;
+            const nameInput = e.target.querySelector('.link-name-input');
+            const urlInput = e.target.querySelector('.link-url-input');
+            const name = nameInput.value.trim();
+            const url = urlInput.value.trim();
+
+            if (!name || !url) return;
+
+            const newLink = { name, url };
+            const patientDocRef = doc(state.db, `clinic-patients`, patientId);
+            await updateDoc(patientDocRef, { files: arrayUnion(newLink) });
+            
+            nameInput.value = '';
+            urlInput.value = '';
+        }
+        
+        function handleFilterClick(e) {
+            const button = e.target.closest('button[data-filter]');
+            if (button) {
+                state.currentServiceFilter = button.dataset.filter;
+                document.querySelectorAll('#filter-container button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            }
+            if (e.target.id === 'doctor-filter') {
+                state.currentDoctorFilter = e.target.value;
+            }
+            renderPatientList();
+        }
+
+        function handleExportCSV() {
+            if (state.patients.length === 0) return alert("بیماری برای خروجی گرفتن وجود ندارد.");
+            const headers = ['نام بیمار', 'نام پزشک', 'نوع خدمت', 'وضعیت', 'دارای CBCT', 'دارای اسکن'];
+            const rows = state.patients.map(p => [
+                `"${p.name}"`, `"${p.doctor}"`, `"${p.service === 'surgical-guide' ? 'جراحی سرجیکال گاید' : 'فتوگرافی ارتودنسی'}"`,
+                `"${p.status === 'completed' ? 'انجام شد' : 'در انتظار'}"`, p.hasCbct ? '"بله"' : '"خیر"', p.hasScanData ? '"بله"' : '"خیر"'
+            ]);
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `patients-export-${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
